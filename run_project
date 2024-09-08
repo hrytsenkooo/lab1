@@ -5,6 +5,7 @@ set -euo pipefail # Enable strict mode
 MARIADB=$(which mariadb)
 CPIMPORT=$(which cpimport)
 SCHEMA_DIR=$(readlink -f ./schema)
+LOCAL_DIR=~/Desktop
 NAME1='airports'
 NAME2='airlines'
 NAME3='flights'
@@ -19,22 +20,31 @@ else
     exit 1
 fi
 
-# Downloading data from MariaDB Sample Data S3 Bucket
-echo -e "\nDownloading '${NAME3}.csv' from MariaDB S3 bucket..."
-if [[ -f "${SCHEMA_DIR}/${NAME3}.csv" ]]; then
-    if [[ $(wc -l <"${SCHEMA_DIR}/${NAME3}.csv") -eq 38083735 ]]; then
-        echo -e "${GREEN}'${NAME3}.csv' already exists and has the correct number of lines.${NC}"
-    fi
-else
-    if curl -o "${SCHEMA_DIR}/${NAME3}.csv" -# "https://drive.google.com/uc?export=download&id=1MZxzEpkIbVwf_-Z_EmDjYIwdfPs_68GD"; then
-        echo -e "Downloaded '${NAME3}.csv' ... ${GREEN}done${NC}\n"
-    else
-        echo -e "Downloading '${NAME3}.csv' ... ${RED}failed${NC}"
-        exit 1
-    fi
-fi
 
 # Loading data into ColumnStore tables.
+for CSV_FILE in ${NAME1} ${NAME2}; do
+    if [[ ! -f "${SCHEMA_DIR}/${CSV_FILE}.csv" ]]; then
+        echo -e "Downloading '${CSV_FILE}.csv' from GitHub..."
+        if curl -o "${SCHEMA_DIR}/${CSV_FILE}.csv" -# "https://raw.githubusercontent.com/yourrepo/${CSV_FILE}.csv"; then
+            echo -e "Downloaded '${CSV_FILE}.csv' ... ${GREEN}done${NC}\n"
+        else
+            echo -e "Downloading '${CSV_FILE}.csv' ... ${RED}failed${NC}"
+            exit 1
+        fi
+    else
+        echo -e "${GREEN}'${CSV_FILE}.csv' already exists locally.${NC}"
+    fi
+done
+
+if [[ -f "${LOCAL_DIR}/${NAME3}.csv" ]]; then
+    echo -e "Loading '${NAME3}.csv' from your desktop..."
+    cp "${LOCAL_DIR}/${NAME3}.csv" "${SCHEMA_DIR}/${NAME3}.csv"
+    echo -e "${GREEN}'${NAME3}.csv' loaded from your desktop${NC}"
+else
+    echo -e "${RED}File '${NAME3}.csv' not found on your desktop.${NC}"
+    exit 1
+fi
+
 for CSV_FILE in ${NAME1} ${NAME2} ${NAME3}; do
     echo -e "\nLoading '${CSV_FILE}.csv' with cpimport ..."
     if ! $CPIMPORT -m 1 -s ',' -E '"' columnstore_bts "${CSV_FILE}" -l "${SCHEMA_DIR}/${CSV_FILE}.csv"; then
