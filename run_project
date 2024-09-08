@@ -5,7 +5,7 @@ set -euo pipefail # Enable strict mode
 MARIADB=$(which mariadb)
 CPIMPORT=$(which cpimport)
 SCHEMA_DIR=$(readlink -f ./schema)
-LOCAL_DIR=~/Desktop
+LOCAL_DIR="C:/Users/antin/Desktop"
 NAME1='airports'
 NAME2='airlines'
 NAME3='flights'
